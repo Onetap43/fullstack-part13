@@ -1,0 +1,28 @@
+{
+  "name": "fullstack-part13",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Onetap43/fullstack-part13.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Onetap43/fullstack-part13/issues"
+  },
+  "homepage": "https://github.com/Onetap43/fullstack-part13#readme",
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "sequelize": "^6.37.8"
+  }
+}
