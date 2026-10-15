@@ -1,73 +1,49 @@
 const router = require('express').Router()
-
 const { User, Blog } = require('../models')
 
-router.get('/', async (request, response, next) => {
+router.get('/', async (req, res, next) => {
   try {
-    const users = await User.findAll({
-      include: {
-        model: Blog
-      }
-    })
-
-    response.json(users)
-  } catch (error) {
-    next(error)
-  }
+    const users = await User.findAll({ include: { model: Blog } })
+    res.json(users)
+  } catch (error) { next(error) }
 })
 
-router.post('/', async (request, response, next) => {
+router.post('/', async (req, res, next) => {
   try {
-    const { username, name } = request.body
-
-    const user = await User.create({
-      username,
-      name
-    })
-
-    response.json(user)
-  } catch (error) {
-    next(error)
-  }
+    const { username, name } = req.body || {}
+    const user = await User.create({ username, name })
+    res.status(201).json(user)
+  } catch (error) { next(error) }
 })
 
-router.get('/:id', async (request, response, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    const user = await User.findByPk(request.params.id, {
-      include: {
-        model: Blog
-      }
-    })
-
-    if (!user) {
-      return response.status(404).end()
+    const through = { attributes: ['id', 'read'] }
+    if (req.query.read === 'true') through.where = { read: true }
+    else if (req.query.read === 'false') through.where = { read: false }
+    else if (req.query.read !== undefined) {
+      return res.status(400).json({ error: 'read must be true or false' })
     }
 
-    response.json(user)
-  } catch (error) {
-    next(error)
-  }
+    const user = await User.findByPk(req.params.id, {
+      include: [
+        { model: Blog },
+        { model: Blog, as: 'readings', through, required: false }
+      ]
+    })
+    if (!user) return res.status(404).end()
+    res.json(user)
+  } catch (error) { next(error) }
 })
 
-router.put('/:username', async (request, response, next) => {
+router.put('/:username', async (req, res, next) => {
   try {
-    const user = await User.findOne({
-      where: {
-        username: request.params.username
-      }
-    })
-
-    if (!user) {
-      return response.status(404).end()
-    }
-
-    user.name = request.body.name
+    const user = await User.findOne({ where: { username: req.params.username } })
+    if (!user) return res.status(404).end()
+    if (req.body.name !== undefined) user.name = req.body.name
     await user.save()
-
-    response.json(user)
-  } catch (error) {
-    next(error)
-  }
+    res.json(user)
+  } catch (error) { next(error) }
 })
 
 module.exports = router

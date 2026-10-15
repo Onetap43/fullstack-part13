@@ -1,134 +1,62 @@
-const jwt = require('jsonwebtoken')
 const { Op } = require('sequelize')
 const router = require('express').Router()
-
 const { Blog, User } = require('../models')
-const { SECRET } = require('../util/config')
+const { tokenExtractor } = require('../util/middleware')
 
-const tokenExtractor = (request, response, next) => {
-  const authorization = request.get('authorization')
-
-  if (
-    authorization &&
-    authorization.toLowerCase().startsWith('bearer ')
-  ) {
-    try {
-      request.decodedToken = jwt.verify(
-        authorization.substring(7),
-        SECRET
-      )
-    } catch (error) {
-      return response.status(401).json({
-        error: 'token invalid'
-      })
-    }
-  } else {
-    return response.status(401).json({
-      error: 'token missing'
-    })
-  }
-
-  next()
-}
-
-const blogFinder = async (request, response, next) => {
+const blogFinder = async (req, res, next) => {
   try {
-    request.blog = await Blog.findByPk(request.params.id)
-
-    if (!request.blog) {
-      return response.status(404).end()
-    }
-
+    req.blog = await Blog.findByPk(req.params.id)
+    if (!req.blog) return res.status(404).end()
     next()
-  } catch (error) {
-    next(error)
-  }
+  } catch (error) { next(error) }
 }
 
-router.get('/', async (request, response, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const where = {}
-
-    if (request.query.search) {
+    if (req.query.search) {
       where[Op.or] = [
-        {
-          title: {
-            [Op.iLike]: `%${request.query.search}%`
-          }
-        },
-        {
-          author: {
-            [Op.iLike]: `%${request.query.search}%`
-          }
-        }
+        { title: { [Op.iLike]: `%${req.query.search}%` } },
+        { author: { [Op.iLike]: `%${req.query.search}%` } }
       ]
     }
-
     const blogs = await Blog.findAll({
       where,
-      include: {
-        model: User,
-        attributes: ['id', 'username', 'name']
-      },
+      include: { model: User, attributes: ['id', 'username', 'name'] },
       order: [['likes', 'DESC']]
     })
-
-    response.json(blogs)
-  } catch (error) {
-    next(error)
-  }
+    res.json(blogs)
+  } catch (error) { next(error) }
 })
 
-router.post('/', tokenExtractor, async (request, response, next) => {
+router.post('/', tokenExtractor, async (req, res, next) => {
   try {
-    const user = await User.findByPk(request.decodedToken.id)
-
-    if (!user) {
-      return response.status(401).json({
-        error: 'user not found'
-      })
-    }
-
+    const { title, author, url, likes, year } = req.body || {}
     const blog = await Blog.create({
-      ...request.body,
-      userId: user.id
+      title, author, url, likes, year, userId: req.authenticatedUser.id
     })
-
-    response.json(blog)
-  } catch (error) {
-    next(error)
-  }
+    res.status(201).json(blog)
+  } catch (error) { next(error) }
 })
 
-router.put('/:id', blogFinder, async (request, response, next) => {
+router.put('/:id', blogFinder, async (req, res, next) => {
   try {
-    request.blog.likes = request.body.likes
-    await request.blog.save()
-
-    response.json(request.blog)
-  } catch (error) {
-    next(error)
-  }
+    const updates = {}
+    if (Object.prototype.hasOwnProperty.call(req.body, 'likes')) updates.likes = req.body.likes
+    if (Object.prototype.hasOwnProperty.call(req.body, 'year')) updates.year = req.body.year
+    await req.blog.update(updates)
+    res.json(req.blog)
+  } catch (error) { next(error) }
 })
 
-router.delete(
-  '/:id',
-  tokenExtractor,
-  blogFinder,
-  async (request, response, next) => {
-    try {
-      if (request.blog.userId !== request.decodedToken.id) {
-        return response.status(403).json({
-          error: 'only the creator can delete this blog'
-        })
-      }
-
-      await request.blog.destroy()
-      response.status(204).end()
-    } catch (error) {
-      next(error)
+router.delete('/:id', tokenExtractor, blogFinder, async (req, res, next) => {
+  try {
+    if (req.blog.userId !== req.authenticatedUser.id) {
+      return res.status(403).json({ error: 'only the creator can delete this blog' })
     }
-  }
-)
+    await req.blog.destroy()
+    res.status(204).end()
+  } catch (error) { next(error) }
+})
 
 module.exports = router

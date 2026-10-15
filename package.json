@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "cross-env TESTING=true node --test --test-concurrency=1 tests/api_ch3.test.js",
+    "test": "cross-env TESTING=true node --test --test-concurrency=1",
     "start": "node index.js",
-    "start:test": "cross-env TESTING=true node index.js"
+    "start:test": "cross-env TESTING=true node index.js",
+    "migration:down": "node util/rollback.js"
   },
   "repository": {
     "type": "git",

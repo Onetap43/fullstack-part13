@@ -1,16 +1,25 @@
 const Blog = require('./blog')
 const User = require('./user')
+const ReadingList = require('./readingList')
+const Session = require('./session')
 
-User.hasMany(Blog)
-Blog.belongsTo(User)
+User.hasMany(Blog, { foreignKey: 'userId' })
+Blog.belongsTo(User, { foreignKey: 'userId' })
 
-const syncModels = async () => {
-  await User.sync({ alter: true })
-  await Blog.sync({ alter: true })
-}
+User.belongsToMany(Blog, {
+  through: ReadingList,
+  as: 'readings',
+  foreignKey: 'userId',
+  otherKey: 'blogId'
+})
+Blog.belongsToMany(User, {
+  through: ReadingList,
+  as: 'readers',
+  foreignKey: 'blogId',
+  otherKey: 'userId'
+})
 
-module.exports = {
-  Blog,
-  User,
-  syncModels
-}
+User.hasMany(Session, { foreignKey: 'userId' })
+Session.belongsTo(User, { foreignKey: 'userId' })
+
+module.exports = { Blog, User, ReadingList, Session }

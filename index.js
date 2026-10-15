@@ -1,39 +1,28 @@
 const express = require('express')
-
-const { PORT } = require('./util/config')
+const { PORT, SECRET } = require('./util/config')
 const { connectToDatabase } = require('./util/db')
-const { syncModels } = require('./models')
+require('./models')
 const { errorHandler } = require('./util/middleware')
 
-const blogsRouter = require('./controllers/blogs')
-const usersRouter = require('./controllers/users')
-const loginRouter = require('./controllers/login')
-const authorsRouter = require('./controllers/authors')
-const resetRouter = require('./controllers/reset')
-
 const app = express()
-
 app.use(express.json())
-
-app.get('/', (request, response) => {
-  response.status(200).send('ok')
-})
-
-app.use('/api/blogs', blogsRouter)
-app.use('/api/users', usersRouter)
-app.use('/api/login', loginRouter)
-app.use('/api/authors', authorsRouter)
-app.use('/api/reset', resetRouter)
-
+app.get('/', (req, res) => res.status(200).send('ok'))
+app.use('/api/blogs', require('./controllers/blogs'))
+app.use('/api/users', require('./controllers/users'))
+app.use('/api/login', require('./controllers/login'))
+app.use('/api/logout', require('./controllers/logout'))
+app.use('/api/authors', require('./controllers/authors'))
+app.use('/api/readinglists', require('./controllers/readinglists'))
+app.use('/api/reset', require('./controllers/reset'))
 app.use(errorHandler)
 
 const start = async () => {
+  if (!SECRET) throw new Error('SECRET missing in environment')
   await connectToDatabase()
-  await syncModels()
-
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-  })
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
 }
 
-start()
+start().catch(error => {
+  console.error('Server startup failed:', error.message)
+  process.exit(1)
+})
